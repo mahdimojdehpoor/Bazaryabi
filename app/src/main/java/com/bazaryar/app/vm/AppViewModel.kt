@@ -20,6 +20,7 @@ class AppViewModel : ViewModel() {
     private val adminRepo = AdminRepository()
     private val marketerRepo = MarketerRepository()
     private val customerRepo = CustomerRepository()
+    private val vendorRepo = VendorRepository()
 
     var screen by mutableStateOf(Screen.HOME)
         private set
@@ -44,6 +45,13 @@ class AppViewModel : ViewModel() {
     // مشتری
     var vendorDirectory by mutableStateOf<List<Vendor>>(emptyList()); private set
     var followedVendorIds by mutableStateOf<Set<String>>(emptySet()); private set
+
+    // کاسب - فاز ۲
+    var myDiscounts by mutableStateOf<List<Discount>>(emptyList()); private set
+    var mySocialLinks by mutableStateOf<List<VendorSocialLink>>(emptyList()); private set
+    var myPosts by mutableStateOf<List<VendorPost>>(emptyList()); private set
+    var myContacts by mutableStateOf<List<VendorContact>>(emptyList()); private set
+    var myTransactions by mutableStateOf<List<VendorTransaction>>(emptyList()); private set
 
     fun goTo(target: Screen) {
         errorMessage = null; infoMessage = null; screen = target
@@ -113,11 +121,20 @@ class AppViewModel : ViewModel() {
                         vendorDirectory = customerRepo.getVendorDirectory()
                         followedVendorIds = customerRepo.getMyFollowedVendorIds()
                     }
+                    Screen.DASHBOARD_VENDOR -> refreshVendorData()
                     else -> {}
                 }
             } catch (e: Exception) { errorMessage = e.message }
             isLoading = false
         }
+    }
+
+    private suspend fun refreshVendorData() {
+        myDiscounts = vendorRepo.getMyDiscounts()
+        mySocialLinks = vendorRepo.getMySocialLinks()
+        myPosts = vendorRepo.getMyPosts()
+        myContacts = vendorRepo.getMyContacts()
+        myTransactions = vendorRepo.getMyTransactions()
     }
 
     fun approveProfile(profile: Profile) = viewModelScope.launch { adminRepo.approve(profile); refreshCurrentDashboard() }
@@ -131,6 +148,49 @@ class AppViewModel : ViewModel() {
             else customerRepo.follow(vendorId)
             followedVendorIds = customerRepo.getMyFollowedVendorIds()
         }
+    }
+
+    // ---------- عملیات کاسب: تخفیف ----------
+    fun addDiscount(title: String, description: String?, percent: Double?, validUntil: String?) {
+        viewModelScope.launch { vendorRepo.addDiscount(title, description, percent, validUntil); myDiscounts = vendorRepo.getMyDiscounts() }
+    }
+    fun toggleDiscountActive(id: String, active: Boolean) {
+        viewModelScope.launch { vendorRepo.toggleDiscount(id, active); myDiscounts = vendorRepo.getMyDiscounts() }
+    }
+    fun deleteDiscount(id: String) {
+        viewModelScope.launch { vendorRepo.deleteDiscount(id); myDiscounts = vendorRepo.getMyDiscounts() }
+    }
+
+    // ---------- عملیات کاسب: لینک فضای مجازی ----------
+    fun addSocialLink(label: String, url: String) {
+        viewModelScope.launch { vendorRepo.addSocialLink(label, url); mySocialLinks = vendorRepo.getMySocialLinks() }
+    }
+    fun deleteSocialLink(id: String) {
+        viewModelScope.launch { vendorRepo.deleteSocialLink(id); mySocialLinks = vendorRepo.getMySocialLinks() }
+    }
+
+    // ---------- عملیات کاسب: تبلیغ/پست ----------
+    fun addPost(title: String, content: String?) {
+        viewModelScope.launch { vendorRepo.addPost(title, content); myPosts = vendorRepo.getMyPosts() }
+    }
+    fun deletePost(id: String) {
+        viewModelScope.launch { vendorRepo.deletePost(id); myPosts = vendorRepo.getMyPosts() }
+    }
+
+    // ---------- عملیات کاسب: دفترچه تلفن ----------
+    fun addContact(fullName: String, phone: String?, socialLink: String?, notes: String?) {
+        viewModelScope.launch { vendorRepo.addContact(fullName, phone, socialLink, notes); myContacts = vendorRepo.getMyContacts() }
+    }
+    fun deleteContact(id: String) {
+        viewModelScope.launch { vendorRepo.deleteContact(id); myContacts = vendorRepo.getMyContacts() }
+    }
+
+    // ---------- عملیات کاسب: حسابداری ----------
+    fun addTransaction(type: String, amount: Long, description: String?, occurredAt: String) {
+        viewModelScope.launch { vendorRepo.addTransaction(type, amount, description, occurredAt); myTransactions = vendorRepo.getMyTransactions() }
+    }
+    fun deleteTransaction(id: String) {
+        viewModelScope.launch { vendorRepo.deleteTransaction(id); myTransactions = vendorRepo.getMyTransactions() }
     }
 
     private fun routeByRole(role: String) {
