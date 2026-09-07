@@ -46,12 +46,78 @@ interface PostgrestApi {
         @Body vendor: Vendor
     ): List<Vendor>
 
+    // ---------- تخفیف‌ها ----------
     @GET("discounts")
     suspend fun getDiscountsByVendor(@Query("vendor_id") vendorIdFilter: String): List<Discount>
 
+    @POST("discounts")
+    suspend fun createDiscount(
+        @Header("Prefer") prefer: String = "return=representation",
+        @Body discount: Discount
+    ): List<Discount>
+
+    @PATCH("discounts")
+    suspend fun updateDiscountActive(
+        @Query("id") idFilter: String,
+        @Body body: DiscountActiveUpdate
+    )
+
+    @DELETE("discounts")
+    suspend fun deleteDiscount(@Query("id") idFilter: String)
+
+    // ---------- لینک‌های فضای مجازی ----------
     @GET("vendor_social_links")
     suspend fun getSocialLinksByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorSocialLink>
 
+    @POST("vendor_social_links")
+    suspend fun createSocialLink(
+        @Header("Prefer") prefer: String = "return=representation",
+        @Body link: VendorSocialLink
+    ): List<VendorSocialLink>
+
+    @DELETE("vendor_social_links")
+    suspend fun deleteSocialLink(@Query("id") idFilter: String)
+
+    // ---------- تبلیغ / محتوا ----------
+    @GET("vendor_posts")
+    suspend fun getPostsByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorPost>
+
+    @POST("vendor_posts")
+    suspend fun createPost(
+        @Header("Prefer") prefer: String = "return=representation",
+        @Body post: VendorPost
+    ): List<VendorPost>
+
+    @DELETE("vendor_posts")
+    suspend fun deletePost(@Query("id") idFilter: String)
+
+    // ---------- دفترچه تلفن ----------
+    @GET("vendor_contacts")
+    suspend fun getContactsByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorContact>
+
+    @POST("vendor_contacts")
+    suspend fun createContact(
+        @Header("Prefer") prefer: String = "return=representation",
+        @Body contact: VendorContact
+    ): List<VendorContact>
+
+    @DELETE("vendor_contacts")
+    suspend fun deleteContact(@Query("id") idFilter: String)
+
+    // ---------- حسابداری ----------
+    @GET("vendor_transactions")
+    suspend fun getTransactionsByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorTransaction>
+
+    @POST("vendor_transactions")
+    suspend fun createTransaction(
+        @Header("Prefer") prefer: String = "return=representation",
+        @Body tx: VendorTransaction
+    ): List<VendorTransaction>
+
+    @DELETE("vendor_transactions")
+    suspend fun deleteTransaction(@Query("id") idFilter: String)
+
+    // ---------- دنبال‌کردن (مشتری) ----------
     @GET("customer_vendor_follows")
     suspend fun getMyFollows(@Query("customer_id") customerIdFilter: String): List<Follow>
 
