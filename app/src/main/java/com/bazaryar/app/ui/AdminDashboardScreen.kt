@@ -7,12 +7,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bazaryar.app.model.Profile
 import com.bazaryar.app.model.Vendor
 import com.bazaryar.app.repo.MarketerSummary
 import com.bazaryar.app.vm.AppViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private enum class AdminTab { REQUESTS, MARKETERS, VENDORS, CUSTOMERS }
 
@@ -56,8 +60,21 @@ fun AdminDashboardScreen(vm: AppViewModel) {
                     items(vm.marketerSummaries) { s -> MarketerCard(s, vm) }
                 }
             }
-            AdminTab.VENDORS -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(vm.allVendors) { v -> VendorAdminCard(v, vm) }
+            AdminTab.VENDORS -> {
+                val expiredCount = vm.allVendors.count { isExpired(it.subscriptionEnd) }
+                val soonCount = vm.allVendors.count { !isExpired(it.subscriptionEnd) && isExpiringSoon(it.subscriptionEnd) }
+                if (expiredCount > 0 || soonCount > 0) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {
+                            if (expiredCount > 0) Text("⚠ $expiredCount کاسب اشتراکشون منقضی شده", color = Color.Red)
+                            if (soonCount > 0) Text("⏰ $soonCount کاسب تا ۷ روز آینده منقضی می‌شن", color = Color(0xFFB8860B))
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(vm.allVendors) { v -> VendorAdminCard(v, vm) }
+                }
             }
             AdminTab.CUSTOMERS -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(vm.allCustomers) { c ->
@@ -104,11 +121,17 @@ private fun MarketerCard(summary: MarketerSummary, vm: AppViewModel) {
 
 @Composable
 private fun VendorAdminCard(vendor: Vendor, vm: AppViewModel) {
+    val expired = isExpired(vendor.subscriptionEnd)
+    val soon = !expired && isExpiringSoon(vendor.subscriptionEnd)
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(vendor.businessName.ifBlank { "کاسب" }, fontWeight = FontWeight.Bold)
             Text("وضعیت اشتراک: ${statusFa(vendor.subscriptionStatus)}")
-            Text("پایان اشتراک: ${vendor.subscriptionEnd ?: "نامشخص"}")
+            Text(
+                "پایان اشتراک: ${vendor.subscriptionEnd ?: "نامشخص"}",
+                color = if (expired) Color.Red else if (soon) Color(0xFFB8860B) else Color.Unspecified
+            )
+            if (expired) Text("این کاسب باید یادآوری تسویه بگیرد", color = Color.Red)
             Spacer(Modifier.height(8.dp))
             Row {
                 Button(onClick = { vm.toggleSuspend(vendor.id, true) }) { Text("قطع دسترسی") }
@@ -121,3 +144,17 @@ private fun VendorAdminCard(vendor: Vendor, vm: AppViewModel) {
 
 private fun roleFa(role: String) = when (role) { "marketer" -> "بازاریاب"; "vendor" -> "کاسب"; else -> role }
 private fun statusFa(s: String) = when (s) { "active" -> "فعال"; "pending" -> "در انتظار"; "expired" -> "منقضی"; else -> s }
+
+private fun parseDate(dateStr: String?): Date? {
+    if (dateStr == null) return null
+    return try { SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateStr) } catch (e: Exception) { null }
+}
+private fun isExpired(dateStr: String?): Boolean {
+    val d = parseDate(dateStr) ?: return false
+    return d.before(Date())
+}
+private fun isExpiringSoon(dateStr: String?): Boolean {
+    val d = parseDate(dateStr) ?: return false
+    val diffDays = (d.time - Date().time) / (1000 * 60 * 60 * 24)
+    return diffDays in 0..7
+}
