@@ -56,11 +56,42 @@ data class Discount(
 )
 
 @Serializable
+data class DiscountActiveUpdate(@SerialName("is_active") val isActive: Boolean)
+
+@Serializable
 data class VendorSocialLink(
     val id: String? = null,
     @SerialName("vendor_id") val vendorId: String,
     @SerialName("platform_label") val platformLabel: String,
     val url: String
+)
+
+@Serializable
+data class VendorPost(
+    val id: String? = null,
+    @SerialName("vendor_id") val vendorId: String,
+    val title: String,
+    val content: String? = null
+)
+
+@Serializable
+data class VendorContact(
+    val id: String? = null,
+    @SerialName("vendor_id") val vendorId: String,
+    @SerialName("full_name") val fullName: String,
+    val phone: String? = null,
+    @SerialName("social_link") val socialLink: String? = null,
+    val notes: String? = null
+)
+
+@Serializable
+data class VendorTransaction(
+    val id: String? = null,
+    @SerialName("vendor_id") val vendorId: String,
+    val type: String, // income یا expense
+    val amount: Long,
+    val description: String? = null,
+    @SerialName("occurred_at") val occurredAt: String? = null
 )
 
 @Serializable
