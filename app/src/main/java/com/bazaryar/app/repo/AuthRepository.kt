@@ -30,8 +30,19 @@ class AuthRepository {
                 return LoginResult.Error("پروفایل کاربر پیدا نشد")
             }
             LoginResult.Success(profile.role, profile.approvalStatus, profile.accountStatus)
+        } catch (e: retrofit2.HttpException) {
+            val body = try { e.response()?.errorBody()?.string() } catch (ex: Exception) { null }
+            LoginResult.Error(
+                when {
+                    body?.contains("Email not confirmed", ignoreCase = true) == true ->
+                        "ایمیل تایید نشده است. از مدیر بخواه گزینه Confirm email را در Supabase خاموش کند."
+                    body?.contains("Invalid login credentials", ignoreCase = true) == true ->
+                        "ایمیل یا رمز عبور اشتباه است"
+                    else -> "خطای ورود: ${body ?: e.message()}"
+                }
+            )
         } catch (e: Exception) {
-            LoginResult.Error("ایمیل یا رمز عبور اشتباه است")
+            LoginResult.Error("خطای شبکه: ${e.message ?: "اتصال برقرار نشد (احتمالاً فیلترینگ)"}")
         }
     }
 
