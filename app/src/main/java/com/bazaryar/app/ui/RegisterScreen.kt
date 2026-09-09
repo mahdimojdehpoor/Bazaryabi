@@ -2,10 +2,13 @@ package com.bazaryar.app.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.bazaryar.app.model.Role
@@ -18,9 +21,11 @@ fun RegisterScreen(vm: AppViewModel) {
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var noCriminalRecord by remember { mutableStateOf(false) }
 
     val needsCriminalCheck = vm.registerRole != Role.CUSTOMER
+    val passwordsMatch = password == confirmPassword
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
@@ -33,13 +38,41 @@ fun RegisterScreen(vm: AppViewModel) {
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(lastName, { lastName = it }, label = { Text("نام خانوادگی") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp))
-        OutlinedTextField(email, { email = it }, label = { Text("ایمیل") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            email, { email = it }, label = { Text("ایمیل") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrect = false
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
             password, { password = it }, label = { Text("رمز عبور") },
             visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrect = false
+            ),
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            confirmPassword, { confirmPassword = it }, label = { Text("تکرار رمز عبور") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrect = false
+            ),
+            isError = confirmPassword.isNotEmpty() && !passwordsMatch,
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (confirmPassword.isNotEmpty() && !passwordsMatch) {
+            Text("رمز عبور و تکرار آن یکسان نیستند", color = MaterialTheme.colorScheme.error)
+        }
 
         if (needsCriminalCheck) {
             Spacer(Modifier.height(10.dp))
@@ -53,7 +86,7 @@ fun RegisterScreen(vm: AppViewModel) {
         vm.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error); Spacer(Modifier.height(8.dp)) }
 
         val canSubmit = firstName.isNotBlank() && lastName.isNotBlank() &&
-                email.isNotBlank() && password.length >= 6 &&
+                email.isNotBlank() && password.length >= 6 && passwordsMatch &&
                 (!needsCriminalCheck || noCriminalRecord)
 
         Button(
