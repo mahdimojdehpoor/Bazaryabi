@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.bazaryar.app.vm.AppViewModel
 import com.bazaryar.app.vm.Screen
@@ -17,11 +20,24 @@ fun LoginScreen(vm: AppViewModel) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
         Text("ورود", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(20.dp))
-        OutlinedTextField(email, { email = it }, label = { Text("ایمیل") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            email, { email = it }, label = { Text("ایمیل") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrect = false
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             password, { password = it }, label = { Text("رمز عبور") },
             visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrect = false
+            ),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
