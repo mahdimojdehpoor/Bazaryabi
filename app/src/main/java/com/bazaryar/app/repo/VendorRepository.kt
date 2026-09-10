@@ -6,9 +6,8 @@ import com.bazaryar.app.network.SessionManager
 
 class VendorRepository {
 
-    private fun myId() = SessionManager.userId ?: ""
+    private fun myId() = SessionManager.effectiveOwnerId ?: ""
 
-    // تخفیف‌ها
     suspend fun getMyDiscounts(): List<Discount> =
         ApiClient.restApi.getDiscountsByVendor(vendorIdFilter = "eq.${myId()}")
 
@@ -26,7 +25,6 @@ class VendorRepository {
         ApiClient.restApi.deleteDiscount(idFilter = "eq.$id")
     }
 
-    // لینک‌های فضای مجازی
     suspend fun getMySocialLinks(): List<VendorSocialLink> =
         ApiClient.restApi.getSocialLinksByVendor(vendorIdFilter = "eq.${myId()}")
 
@@ -38,7 +36,6 @@ class VendorRepository {
         ApiClient.restApi.deleteSocialLink(idFilter = "eq.$id")
     }
 
-    // تبلیغ / محتوا
     suspend fun getMyPosts(): List<VendorPost> =
         ApiClient.restApi.getPostsByVendor(vendorIdFilter = "eq.${myId()}")
 
@@ -50,7 +47,6 @@ class VendorRepository {
         ApiClient.restApi.deletePost(idFilter = "eq.$id")
     }
 
-    // دفترچه تلفن
     suspend fun getMyContacts(): List<VendorContact> =
         ApiClient.restApi.getContactsByVendor(vendorIdFilter = "eq.${myId()}")
 
@@ -64,7 +60,6 @@ class VendorRepository {
         ApiClient.restApi.deleteContact(idFilter = "eq.$id")
     }
 
-    // حسابداری
     suspend fun getMyTransactions(): List<VendorTransaction> =
         ApiClient.restApi.getTransactionsByVendor(vendorIdFilter = "eq.${myId()}")
 
