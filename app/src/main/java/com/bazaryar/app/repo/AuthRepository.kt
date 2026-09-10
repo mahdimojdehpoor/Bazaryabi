@@ -2,6 +2,7 @@ package com.bazaryar.app.repo
 
 import com.bazaryar.app.model.LoginRequest
 import com.bazaryar.app.model.RecoverRequest
+import com.bazaryar.app.model.Role
 import com.bazaryar.app.model.SignUpRequest
 import com.bazaryar.app.network.ApiClient
 import com.bazaryar.app.network.SessionManager
@@ -23,13 +24,22 @@ class AuthRepository {
             val auth = ApiClient.authApi.login(body = LoginRequest(email, password))
             SessionManager.accessToken = auth.accessToken
             SessionManager.userId = auth.user.id
+            SessionManager.effectiveOwnerId = auth.user.id
 
             val profile = ApiClient.restApi.getMyProfile(idFilter = "eq.${auth.user.id}").firstOrNull()
             if (profile == null) {
                 SessionManager.clear()
                 return LoginResult.Error("پروفایل کاربر پیدا نشد")
             }
-            LoginResult.Success(profile.role, profile.approvalStatus, profile.accountStatus)
+
+            var effectiveRole = profile.role
+            if (profile.role == Role.SECRETARY && profile.ownerId != null) {
+                SessionManager.effectiveOwnerId = profile.ownerId
+                val ownerProfile = ApiClient.restApi.getMyProfile(idFilter = "eq.${profile.ownerId}").firstOrNull()
+                effectiveRole = ownerProfile?.role ?: profile.role
+            }
+
+            LoginResult.Success(effectiveRole, profile.approvalStatus, profile.accountStatus)
         } catch (e: retrofit2.HttpException) {
             val body = try { e.response()?.errorBody()?.string() } catch (ex: Exception) { null }
             LoginResult.Error(
@@ -70,6 +80,20 @@ class AuthRepository {
             SimpleResult.Success
         } catch (e: Exception) {
             SimpleResult.Error(e.message ?: "خطا در ارسال ایمیل بازیابی")
+        }
+    }
+
+    suspend fun deleteAccount(): SimpleResult {
+        return try {
+            val response = ApiClient.functionsApi.deleteAccount()
+            if (response.success == true) {
+                SessionManager.clear()
+                SimpleResult.Success
+            } else {
+                SimpleResult.Error(response.error ?: "خطا در حذف حساب")
+            }
+        } catch (e: Exception) {
+            SimpleResult.Error(e.message ?: "خطا در حذف حساب")
         }
     }
 
