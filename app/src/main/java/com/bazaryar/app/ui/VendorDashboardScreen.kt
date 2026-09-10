@@ -24,7 +24,7 @@ import com.bazaryar.app.model.VendorTransaction
 import com.bazaryar.app.util.SmsSender
 import com.bazaryar.app.vm.AppViewModel
 
-private enum class VendorTab { DISCOUNTS, CONTACTS, SOCIAL, POSTS, ACCOUNTING, SMS }
+private enum class VendorTab { DISCOUNTS, CONTACTS, SOCIAL, POSTS, ACCOUNTING, SMS, SECRETARIES }
 
 @Composable
 fun VendorDashboardScreen(vm: AppViewModel) {
