@@ -1,5 +1,5 @@
 -- ============================================================
--- اسکیمای کامل و نهایی بازاریار (شامل جدول‌های فاز ۱ و ۲)
+-- اسکیمای کامل و نهایی بازاریار (فاز ۱ + ۲ + منشی)
 -- کل این فایل رو تو SQL Editor پروژه Supabase اجرا کن
 -- ============================================================
 
@@ -14,16 +14,14 @@ drop table if exists public.vendors cascade;
 drop table if exists public.marketers cascade;
 drop table if exists public.profiles cascade;
 
--- ------------------------------------------------------------
--- پروفایل پایه هر کاربر
--- ------------------------------------------------------------
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
+  owner_id uuid references public.profiles (id) on delete cascade,
   first_name text,
   last_name text,
   full_name text,
   phone text,
-  role text not null check (role in ('admin','marketer','vendor','customer')),
+  role text not null check (role in ('admin','marketer','vendor','customer','secretary')),
   no_criminal_record boolean default false,
   approval_status text not null default 'approved'
       check (approval_status in ('pending','approved','rejected')),
@@ -44,7 +42,7 @@ create table public.vendors (
   business_name text not null default '',
   address text,
   description text,
-  marketer_id uuid references public.marketers (id),
+  marketer_id uuid references public.marketers (id) on delete set null,
   referral_code_used text,
   plan_price bigint not null default 500000,
   marketer_commission bigint not null default 200000,
@@ -57,7 +55,7 @@ create table public.vendors (
 
 create table public.payments (
   id uuid primary key default gen_random_uuid(),
-  vendor_id uuid not null references public.vendors (id),
+  vendor_id uuid not null references public.vendors (id) on delete cascade,
   amount bigint not null,
   marketer_share bigint not null,
   admin_share bigint not null,
@@ -68,7 +66,6 @@ create table public.payments (
   created_at timestamptz default now()
 );
 
--- مشتری‌هایی که یک کاسب را مارک/دنبال کرده‌اند
 create table public.customer_vendor_follows (
   customer_id uuid not null references public.profiles (id) on delete cascade,
   vendor_id uuid not null references public.vendors (id) on delete cascade,
@@ -76,7 +73,6 @@ create table public.customer_vendor_follows (
   primary key (customer_id, vendor_id)
 );
 
--- تخفیف‌های هر کاسب (در پنل مشتری دیده می‌شود)
 create table public.discounts (
   id uuid primary key default gen_random_uuid(),
   vendor_id uuid not null references public.vendors (id) on delete cascade,
@@ -88,7 +84,6 @@ create table public.discounts (
   created_at timestamptz default now()
 );
 
--- لینک‌های فضای مجازی کاسب (در پنل مشتری دیده می‌شود)
 create table public.vendor_social_links (
   id uuid primary key default gen_random_uuid(),
   vendor_id uuid not null references public.vendors (id) on delete cascade,
@@ -97,7 +92,6 @@ create table public.vendor_social_links (
   created_at timestamptz default now()
 );
 
--- تبلیغات/محتوای کاسب (در پنل مشتری دیده می‌شود)
 create table public.vendor_posts (
   id uuid primary key default gen_random_uuid(),
   vendor_id uuid not null references public.vendors (id) on delete cascade,
@@ -106,7 +100,6 @@ create table public.vendor_posts (
   created_at timestamptz default now()
 );
 
--- دفترچه تلفن دستی کاسب (فقط خودش و ادمین می‌بینند - شماره و لینک شخصی مشتری)
 create table public.vendor_contacts (
   id uuid primary key default gen_random_uuid(),
   vendor_id uuid not null references public.vendors (id) on delete cascade,
@@ -117,7 +110,6 @@ create table public.vendor_contacts (
   created_at timestamptz default now()
 );
 
--- حسابداری ساده کاسب (فقط خودش و ادمین می‌بینند)
 create table public.vendor_transactions (
   id uuid primary key default gen_random_uuid(),
   vendor_id uuid not null references public.vendors (id) on delete cascade,
@@ -130,6 +122,7 @@ create table public.vendor_transactions (
 
 -- ------------------------------------------------------------
 -- ساخت خودکار پروفایل هنگام ثبت‌نام
+-- منشی و مشتری خودکار تایید می‌شوند (منشی چون خودِ صاحب‌حساب می‌سازدش)
 -- ------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -138,15 +131,16 @@ declare
   user_role text := coalesce(meta->>'role', 'customer');
 begin
   insert into public.profiles
-    (id, first_name, last_name, full_name, role, no_criminal_record, approval_status)
+    (id, owner_id, first_name, last_name, full_name, role, no_criminal_record, approval_status)
   values (
     new.id,
+    nullif(meta->>'owner_id','')::uuid,
     meta->>'first_name',
     meta->>'last_name',
     trim(coalesce(meta->>'first_name','') || ' ' || coalesce(meta->>'last_name','')),
     user_role,
     coalesce((meta->>'no_criminal_record')::boolean, false),
-    case when user_role = 'customer' then 'approved' else 'pending' end
+    case when user_role in ('customer','secretary') then 'approved' else 'pending' end
   );
   return new;
 end;
@@ -171,15 +165,36 @@ alter table public.vendor_posts enable row level security;
 alter table public.vendor_contacts enable row level security;
 alter table public.vendor_transactions enable row level security;
 
+-- نقش موثر: اگر کاربر منشی باشد، نقش صاحب‌حسابش برگردانده می‌شود
 create or replace function public.current_role()
 returns text as $$
-  select role from public.profiles where id = auth.uid();
+  select coalesce(owner.role, p.role)
+  from public.profiles p
+  left join public.profiles owner on owner.id = p.owner_id
+  where p.id = auth.uid();
+$$ language sql stable security definer;
+
+-- شناسه موثر: اگر کاربر منشی باشد، شناسه صاحب‌حسابش برگردانده می‌شود
+create or replace function public.effective_owner_id()
+returns uuid as $$
+  select coalesce(
+    (select owner_id from public.profiles where id = auth.uid()),
+    auth.uid()
+  );
 $$ language sql stable security definer;
 
 -- profiles
 create policy "profiles_select_own_or_admin"
   on public.profiles for select
   using (id = auth.uid() or public.current_role() = 'admin');
+
+create policy "profiles_select_owner_by_secretary"
+  on public.profiles for select
+  using (id = (select owner_id from public.profiles p2 where p2.id = auth.uid()));
+
+create policy "profiles_select_secretaries_by_owner"
+  on public.profiles for select
+  using (owner_id = auth.uid());
 
 create policy "profiles_update_own"
   on public.profiles for update using (id = auth.uid());
@@ -190,15 +205,19 @@ create policy "profiles_update_admin"
 -- marketers
 create policy "marketers_select"
   on public.marketers for select
-  using (id = auth.uid() or public.current_role() = 'admin');
+  using (id = public.effective_owner_id() or public.current_role() = 'admin');
 
 create policy "marketers_insert_admin"
   on public.marketers for insert with check (public.current_role() = 'admin');
 
--- vendors: خودش، بازاریابش، ادمین -- و هر مشتری فقط کاسب‌های فعال را می‌بیند (دایرکتوری عمومی)
+-- vendors
 create policy "vendors_select_owner_marketer_admin"
   on public.vendors for select
-  using (id = auth.uid() or marketer_id = auth.uid() or public.current_role() = 'admin');
+  using (
+    id = public.effective_owner_id()
+    or marketer_id = public.effective_owner_id()
+    or public.current_role() = 'admin'
+  );
 
 create policy "vendors_select_public_for_customers"
   on public.vendors for select
@@ -214,15 +233,15 @@ create policy "vendors_update_admin"
 create policy "payments_select"
   on public.payments for select
   using (
-    vendor_id = auth.uid()
-    or vendor_id in (select id from public.vendors where marketer_id = auth.uid())
+    vendor_id = public.effective_owner_id()
+    or vendor_id in (select id from public.vendors where marketer_id = public.effective_owner_id())
     or public.current_role() = 'admin'
   );
 
 create policy "payments_insert_admin"
   on public.payments for insert with check (public.current_role() = 'admin');
 
--- customer_vendor_follows: مشتری فقط مال خودش را می‌بیند/می‌سازد؛ کاسب می‌تواند دنبال‌کننده‌های خودش را ببیند
+-- follows (مشتری منشی ندارد)
 create policy "follows_select_own_customer"
   on public.customer_vendor_follows for select
   using (customer_id = auth.uid() or vendor_id = auth.uid() or public.current_role() = 'admin');
@@ -235,44 +254,44 @@ create policy "follows_delete_own_customer"
   on public.customer_vendor_follows for delete
   using (customer_id = auth.uid());
 
--- discounts / social links / posts: خود کاسب مدیریت می‌کند؛ برای مشتری‌ها فقط کاسب‌های فعال دیده می‌شود
+-- discounts / social links / posts
 create policy "discounts_select"
   on public.discounts for select
   using (
-    vendor_id = auth.uid() or public.current_role() = 'admin'
+    vendor_id = public.effective_owner_id() or public.current_role() = 'admin'
     or vendor_id in (select id from public.vendors where subscription_status = 'active')
   );
 create policy "discounts_manage_owner"
   on public.discounts for all
-  using (vendor_id = auth.uid()) with check (vendor_id = auth.uid());
+  using (vendor_id = public.effective_owner_id()) with check (vendor_id = public.effective_owner_id());
 
 create policy "social_links_select"
   on public.vendor_social_links for select
   using (
-    vendor_id = auth.uid() or public.current_role() = 'admin'
+    vendor_id = public.effective_owner_id() or public.current_role() = 'admin'
     or vendor_id in (select id from public.vendors where subscription_status = 'active')
   );
 create policy "social_links_manage_owner"
   on public.vendor_social_links for all
-  using (vendor_id = auth.uid()) with check (vendor_id = auth.uid());
+  using (vendor_id = public.effective_owner_id()) with check (vendor_id = public.effective_owner_id());
 
 create policy "posts_select"
   on public.vendor_posts for select
   using (
-    vendor_id = auth.uid() or public.current_role() = 'admin'
+    vendor_id = public.effective_owner_id() or public.current_role() = 'admin'
     or vendor_id in (select id from public.vendors where subscription_status = 'active')
   );
 create policy "posts_manage_owner"
   on public.vendor_posts for all
-  using (vendor_id = auth.uid()) with check (vendor_id = auth.uid());
+  using (vendor_id = public.effective_owner_id()) with check (vendor_id = public.effective_owner_id());
 
--- vendor_contacts و vendor_transactions: فقط خود کاسب و ادمین (هرگز مشتری یا بازاریاب)
+-- vendor_contacts و vendor_transactions: فقط خود کاسب/منشی‌اش و ادمین
 create policy "contacts_owner_admin"
   on public.vendor_contacts for all
-  using (vendor_id = auth.uid() or public.current_role() = 'admin')
-  with check (vendor_id = auth.uid());
+  using (vendor_id = public.effective_owner_id() or public.current_role() = 'admin')
+  with check (vendor_id = public.effective_owner_id());
 
 create policy "transactions_owner_admin"
   on public.vendor_transactions for all
-  using (vendor_id = auth.uid() or public.current_role() = 'admin')
-  with check (vendor_id = auth.uid());
+  using (vendor_id = public.effective_owner_id() or public.current_role() = 'admin')
+  with check (vendor_id = public.effective_owner_id());
