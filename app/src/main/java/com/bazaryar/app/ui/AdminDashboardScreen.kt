@@ -3,6 +3,8 @@ package com.bazaryar.app.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class AdminTab { REQUESTS, MARKETERS, VENDORS, CUSTOMERS }
+private enum class AdminTab { REQUESTS, MARKETERS, VENDORS, CUSTOMERS, SECRETARIES }
 
 @Composable
 fun AdminDashboardScreen(vm: AppViewModel) {
@@ -36,6 +38,7 @@ fun AdminDashboardScreen(vm: AppViewModel) {
             Tab(tab == AdminTab.MARKETERS, { tab = AdminTab.MARKETERS }, text = { Text("بازاریاب‌ها") })
             Tab(tab == AdminTab.VENDORS, { tab = AdminTab.VENDORS }, text = { Text("کاسب‌ها") })
             Tab(tab == AdminTab.CUSTOMERS, { tab = AdminTab.CUSTOMERS }, text = { Text("مشتری‌ها") })
+            Tab(tab == AdminTab.SECRETARIES, { tab = AdminTab.SECRETARIES }, text = { Text("منشی‌ها") })
         }
         Spacer(Modifier.height(12.dp))
 
@@ -84,6 +87,9 @@ fun AdminDashboardScreen(vm: AppViewModel) {
                         }
                     }
                 }
+            }
+            AdminTab.SECRETARIES -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                SecretaryManagementSection(vm)
             }
         }
     }
