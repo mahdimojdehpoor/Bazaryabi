@@ -8,11 +8,13 @@ object Role {
     const val MARKETER = "marketer"
     const val VENDOR = "vendor"
     const val CUSTOMER = "customer"
+    const val SECRETARY = "secretary"
 }
 
 @Serializable
 data class Profile(
     val id: String,
+    @SerialName("owner_id") val ownerId: String? = null,
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
     @SerialName("full_name") val fullName: String? = null,
@@ -88,7 +90,7 @@ data class VendorContact(
 data class VendorTransaction(
     val id: String? = null,
     @SerialName("vendor_id") val vendorId: String,
-    val type: String, // income یا expense
+    val type: String,
     val amount: Long,
     val description: String? = null,
     @SerialName("occurred_at") val occurredAt: String? = null
@@ -124,3 +126,6 @@ data class ApprovalUpdate(
     @SerialName("approval_status") val approvalStatus: String? = null,
     @SerialName("account_status") val accountStatus: String? = null
 )
+
+@Serializable
+data class SimpleResponse(val success: Boolean? = null, val error: String? = null)
