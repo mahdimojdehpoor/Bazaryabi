@@ -12,10 +12,14 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 object SessionManager {
     @Volatile var accessToken: String? = null
     @Volatile var userId: String? = null
+    /** شناسه‌ای که برای فیلترکردن داده‌ها استفاده می‌شود: خودِ کاربر، یا صاحب‌حساب اگر منشی باشد */
+    @Volatile var effectiveOwnerId: String? = null
+
     fun isLoggedIn() = accessToken != null
     fun clear() {
         accessToken = null
         userId = null
+        effectiveOwnerId = null
     }
 }
 
@@ -62,5 +66,14 @@ object ApiClient {
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
             .create(PostgrestApi::class.java)
+    }
+
+    val functionsApi: FunctionsApi by lazy {
+        Retrofit.Builder()
+            .baseUrl("${BuildConfig.SUPABASE_URL}/functions/v1/")
+            .client(httpClient())
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .build()
+            .create(FunctionsApi::class.java)
     }
 }
