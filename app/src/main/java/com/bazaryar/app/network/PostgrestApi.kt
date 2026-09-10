@@ -14,6 +14,9 @@ interface PostgrestApi {
     @GET("profiles")
     suspend fun getProfilesByRole(@Query("role") roleFilter: String): List<Profile>
 
+    @GET("profiles")
+    suspend fun getSecretariesByOwner(@Query("owner_id") ownerIdFilter: String): List<Profile>
+
     @PATCH("profiles")
     suspend fun updateProfileStatus(
         @Query("id") idFilter: String,
@@ -46,7 +49,6 @@ interface PostgrestApi {
         @Body vendor: Vendor
     ): List<Vendor>
 
-    // ---------- تخفیف‌ها ----------
     @GET("discounts")
     suspend fun getDiscountsByVendor(@Query("vendor_id") vendorIdFilter: String): List<Discount>
 
@@ -65,7 +67,6 @@ interface PostgrestApi {
     @DELETE("discounts")
     suspend fun deleteDiscount(@Query("id") idFilter: String)
 
-    // ---------- لینک‌های فضای مجازی ----------
     @GET("vendor_social_links")
     suspend fun getSocialLinksByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorSocialLink>
 
@@ -78,7 +79,6 @@ interface PostgrestApi {
     @DELETE("vendor_social_links")
     suspend fun deleteSocialLink(@Query("id") idFilter: String)
 
-    // ---------- تبلیغ / محتوا ----------
     @GET("vendor_posts")
     suspend fun getPostsByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorPost>
 
@@ -91,7 +91,6 @@ interface PostgrestApi {
     @DELETE("vendor_posts")
     suspend fun deletePost(@Query("id") idFilter: String)
 
-    // ---------- دفترچه تلفن ----------
     @GET("vendor_contacts")
     suspend fun getContactsByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorContact>
 
@@ -104,7 +103,6 @@ interface PostgrestApi {
     @DELETE("vendor_contacts")
     suspend fun deleteContact(@Query("id") idFilter: String)
 
-    // ---------- حسابداری ----------
     @GET("vendor_transactions")
     suspend fun getTransactionsByVendor(@Query("vendor_id") vendorIdFilter: String): List<VendorTransaction>
 
@@ -117,7 +115,6 @@ interface PostgrestApi {
     @DELETE("vendor_transactions")
     suspend fun deleteTransaction(@Query("id") idFilter: String)
 
-    // ---------- دنبال‌کردن (مشتری) ----------
     @GET("customer_vendor_follows")
     suspend fun getMyFollows(@Query("customer_id") customerIdFilter: String): List<Follow>
 
