@@ -6,8 +6,8 @@ import com.bazaryar.app.network.SessionManager
 
 class MarketerRepository {
     suspend fun getMyVendors(): List<Vendor> {
-        val marketerId = SessionManager.userId ?: return emptyList()
-        return ApiClient.restApi.getVendorsByMarketer(marketerIdFilter = "eq.$marketerId")
+        val ownerId = SessionManager.effectiveOwnerId ?: return emptyList()
+        return ApiClient.restApi.getVendorsByMarketer(marketerIdFilter = "eq.$ownerId")
     }
 
     suspend fun getTotalCommission(): Long =
