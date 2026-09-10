@@ -17,7 +17,10 @@ fun CustomerDashboardScreen(vm: AppViewModel) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("لیست کاسب‌ها", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = { vm.logout() }) { Text("خروج") }
+            Row {
+                DeleteAccountButton(vm)
+                TextButton(onClick = { vm.logout() }) { Text("خروج") }
+            }
         }
         Spacer(Modifier.height(12.dp))
 
