@@ -63,6 +63,7 @@ fun VendorDashboardScreen(vm: AppViewModel) {
             VendorTab.POSTS -> PostsTab(vm)
             VendorTab.ACCOUNTING -> AccountingTab(vm)
             VendorTab.SMS -> SmsTab(vm)
+            VendorTab.SECRETARIES -> SecretaryManagementSection(vm)
         }
     }
 }
