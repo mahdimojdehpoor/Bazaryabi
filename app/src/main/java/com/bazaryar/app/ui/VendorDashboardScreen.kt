@@ -33,7 +33,10 @@ fun VendorDashboardScreen(vm: AppViewModel) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("پنل کاسب", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = { vm.logout() }) { Text("خروج") }
+            Row {
+                DeleteAccountButton(vm)
+                TextButton(onClick = { vm.logout() }) { Text("خروج") }
+            }
         }
         Spacer(Modifier.height(8.dp))
 
@@ -44,6 +47,8 @@ fun VendorDashboardScreen(vm: AppViewModel) {
             Tab(tab == VendorTab.POSTS, { tab = VendorTab.POSTS }, text = { Text("تبلیغ") })
             Tab(tab == VendorTab.ACCOUNTING, { tab = VendorTab.ACCOUNTING }, text = { Text("حسابداری") })
             Tab(tab == VendorTab.SMS, { tab = VendorTab.SMS }, text = { Text("پیامک") })
+            Tab(tab == VendorTab.SECRETARIES, { tab = VendorTab.SECRETARIES }, text = { Text("منشی‌ها") })
+        }
         }
         Spacer(Modifier.height(12.dp))
 
