@@ -21,6 +21,7 @@ class AppViewModel : ViewModel() {
     private val marketerRepo = MarketerRepository()
     private val customerRepo = CustomerRepository()
     private val vendorRepo = VendorRepository()
+    private val secretaryRepo = SecretaryRepository()
 
     var screen by mutableStateOf(Screen.HOME)
         private set
@@ -32,26 +33,24 @@ class AppViewModel : ViewModel() {
     var infoMessage by mutableStateOf<String?>(null)
         private set
 
-    // ادمین
     var marketerSummaries by mutableStateOf<List<MarketerSummary>>(emptyList()); private set
     var pendingProfiles by mutableStateOf<List<Profile>>(emptyList()); private set
     var allVendors by mutableStateOf<List<Vendor>>(emptyList()); private set
     var allCustomers by mutableStateOf<List<Profile>>(emptyList()); private set
 
-    // بازاریاب
     var myVendors by mutableStateOf<List<Vendor>>(emptyList()); private set
     var myCommission by mutableStateOf(0L); private set
 
-    // مشتری
     var vendorDirectory by mutableStateOf<List<Vendor>>(emptyList()); private set
     var followedVendorIds by mutableStateOf<Set<String>>(emptySet()); private set
 
-    // کاسب - فاز ۲
     var myDiscounts by mutableStateOf<List<Discount>>(emptyList()); private set
     var mySocialLinks by mutableStateOf<List<VendorSocialLink>>(emptyList()); private set
     var myPosts by mutableStateOf<List<VendorPost>>(emptyList()); private set
     var myContacts by mutableStateOf<List<VendorContact>>(emptyList()); private set
     var myTransactions by mutableStateOf<List<VendorTransaction>>(emptyList()); private set
+
+    var mySecretaries by mutableStateOf<List<Profile>>(emptyList()); private set
 
     fun goTo(target: Screen) {
         errorMessage = null; infoMessage = null; screen = target
@@ -100,6 +99,17 @@ class AppViewModel : ViewModel() {
         }
     }
 
+    fun deleteAccount() {
+        errorMessage = null; isLoading = true
+        viewModelScope.launch {
+            when (val result = authRepo.deleteAccount()) {
+                is SimpleResult.Success -> screen = Screen.HOME
+                is SimpleResult.Error -> errorMessage = result.message
+            }
+            isLoading = false
+        }
+    }
+
     fun logout() { authRepo.logout(); screen = Screen.HOME }
 
     fun refreshCurrentDashboard() {
@@ -112,16 +122,18 @@ class AppViewModel : ViewModel() {
                         pendingProfiles = adminRepo.getPendingApprovals()
                         allVendors = adminRepo.getAllVendors()
                         allCustomers = adminRepo.getAllCustomers()
+                        loadSecretaries()
                     }
                     Screen.DASHBOARD_MARKETER -> {
                         myVendors = marketerRepo.getMyVendors()
                         myCommission = marketerRepo.getTotalCommission()
+                        loadSecretaries()
                     }
                     Screen.DASHBOARD_CUSTOMER -> {
                         vendorDirectory = customerRepo.getVendorDirectory()
                         followedVendorIds = customerRepo.getMyFollowedVendorIds()
                     }
-                    Screen.DASHBOARD_VENDOR -> refreshVendorData()
+                    Screen.DASHBOARD_VENDOR -> { refreshVendorData(); loadSecretaries() }
                     else -> {}
                 }
             } catch (e: Exception) { errorMessage = e.message }
@@ -150,7 +162,6 @@ class AppViewModel : ViewModel() {
         }
     }
 
-    // ---------- عملیات کاسب: تخفیف ----------
     fun addDiscount(title: String, description: String?, percent: Double?, validUntil: String?) {
         viewModelScope.launch { vendorRepo.addDiscount(title, description, percent, validUntil); myDiscounts = vendorRepo.getMyDiscounts() }
     }
@@ -161,7 +172,6 @@ class AppViewModel : ViewModel() {
         viewModelScope.launch { vendorRepo.deleteDiscount(id); myDiscounts = vendorRepo.getMyDiscounts() }
     }
 
-    // ---------- عملیات کاسب: لینک فضای مجازی ----------
     fun addSocialLink(label: String, url: String) {
         viewModelScope.launch { vendorRepo.addSocialLink(label, url); mySocialLinks = vendorRepo.getMySocialLinks() }
     }
@@ -169,7 +179,6 @@ class AppViewModel : ViewModel() {
         viewModelScope.launch { vendorRepo.deleteSocialLink(id); mySocialLinks = vendorRepo.getMySocialLinks() }
     }
 
-    // ---------- عملیات کاسب: تبلیغ/پست ----------
     fun addPost(title: String, content: String?) {
         viewModelScope.launch { vendorRepo.addPost(title, content); myPosts = vendorRepo.getMyPosts() }
     }
@@ -177,7 +186,6 @@ class AppViewModel : ViewModel() {
         viewModelScope.launch { vendorRepo.deletePost(id); myPosts = vendorRepo.getMyPosts() }
     }
 
-    // ---------- عملیات کاسب: دفترچه تلفن ----------
     fun addContact(fullName: String, phone: String?, socialLink: String?, notes: String?) {
         viewModelScope.launch { vendorRepo.addContact(fullName, phone, socialLink, notes); myContacts = vendorRepo.getMyContacts() }
     }
@@ -185,12 +193,35 @@ class AppViewModel : ViewModel() {
         viewModelScope.launch { vendorRepo.deleteContact(id); myContacts = vendorRepo.getMyContacts() }
     }
 
-    // ---------- عملیات کاسب: حسابداری ----------
     fun addTransaction(type: String, amount: Long, description: String?, occurredAt: String) {
         viewModelScope.launch { vendorRepo.addTransaction(type, amount, description, occurredAt); myTransactions = vendorRepo.getMyTransactions() }
     }
     fun deleteTransaction(id: String) {
         viewModelScope.launch { vendorRepo.deleteTransaction(id); myTransactions = vendorRepo.getMyTransactions() }
+    }
+
+    fun loadSecretaries() {
+        viewModelScope.launch {
+            try { mySecretaries = secretaryRepo.getMySecretaries() } catch (e: Exception) { errorMessage = e.message }
+        }
+    }
+
+    fun addSecretary(firstName: String, lastName: String, email: String, password: String) {
+        errorMessage = null; isLoading = true
+        viewModelScope.launch {
+            try {
+                secretaryRepo.addSecretary(firstName, lastName, email, password)
+                infoMessage = "منشی با موفقیت اضافه شد"
+                loadSecretaries()
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "خطا در افزودن منشی"
+            }
+            isLoading = false
+        }
+    }
+
+    fun revokeSecretary(id: String) {
+        viewModelScope.launch { secretaryRepo.revokeSecretary(id); loadSecretaries() }
     }
 
     private fun routeByRole(role: String) {
