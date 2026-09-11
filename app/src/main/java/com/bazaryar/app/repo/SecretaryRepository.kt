@@ -8,6 +8,8 @@ import com.bazaryar.app.network.SessionManager
 
 class SecretaryRepository {
 
+    private val authRepo = AuthRepository()
+
     suspend fun getMySecretaries(): List<Profile> {
         val myId = SessionManager.userId ?: return emptyList()
         return ApiClient.restApi.getSecretariesByOwner(ownerIdFilter = "eq.$myId")
@@ -24,11 +26,8 @@ class SecretaryRepository {
         ApiClient.authApi.signUp(SignUpRequest(email, password, meta))
     }
 
-    /** حذف واقعی حساب نیاز به دسترسی سرور دارد؛ به‌جای آن دسترسی منشی قطع می‌شود */
-    suspend fun revokeSecretary(profileId: String) {
-        ApiClient.restApi.updateProfileStatus(
-            idFilter = "eq.$profileId",
-            body = com.bazaryar.app.model.ApprovalUpdate(accountStatus = "suspended")
-        )
+    /** حذف کامل و واقعی حساب منشی از Supabase Auth، مستقیم از داخل اپ */
+    suspend fun revokeSecretary(profileId: String): SimpleResult {
+        return authRepo.deleteOtherAccount(profileId)
     }
 }
