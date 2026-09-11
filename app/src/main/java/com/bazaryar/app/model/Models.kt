@@ -129,3 +129,5 @@ data class ApprovalUpdate(
 
 @Serializable
 data class SimpleResponse(val success: Boolean? = null, val error: String? = null)
+@Serializable
+data class DeleteAccountRequest(@SerialName("target_user_id") val targetUserId: String? = null)
