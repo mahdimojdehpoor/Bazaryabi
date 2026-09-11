@@ -221,7 +221,12 @@ class AppViewModel : ViewModel() {
     }
 
     fun revokeSecretary(id: String) {
-        viewModelScope.launch { secretaryRepo.revokeSecretary(id); loadSecretaries() }
+        viewModelScope.launch {
+            when (val result = secretaryRepo.revokeSecretary(id)) {
+                is SimpleResult.Success -> loadSecretaries()
+                is SimpleResult.Error -> errorMessage = result.message
+            }
+        }
     }
 
     private fun routeByRole(role: String) {
