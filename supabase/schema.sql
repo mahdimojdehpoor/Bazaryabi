@@ -1,6 +1,5 @@
 -- ============================================================
--- اسکیمای کامل و نهایی بازاریار (فاز ۱ + ۲ + منشی)
--- کل این فایل رو تو SQL Editor پروژه Supabase اجرا کن
+-- اسکیمای کامل و نهایی بازاریار (فاز ۱ + ۲ + منشی + اصلاحات)
 -- ============================================================
 
 drop table if exists public.vendor_transactions cascade;
@@ -122,13 +121,14 @@ create table public.vendor_transactions (
 
 -- ------------------------------------------------------------
 -- ساخت خودکار پروفایل هنگام ثبت‌نام
--- منشی و مشتری خودکار تایید می‌شوند (منشی چون خودِ صاحب‌حساب می‌سازدش)
+-- نکته امنیتی: هرگز نقش 'admin' از سمت کلاینت پذیرفته نمی‌شود
 -- ------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   meta jsonb := new.raw_user_meta_data;
-  user_role text := coalesce(meta->>'role', 'customer');
+  requested_role text := coalesce(meta->>'role', 'customer');
+  user_role text := case when requested_role = 'admin' then 'customer' else requested_role end;
 begin
   insert into public.profiles
     (id, owner_id, first_name, last_name, full_name, role, no_criminal_record, approval_status)
@@ -165,7 +165,6 @@ alter table public.vendor_posts enable row level security;
 alter table public.vendor_contacts enable row level security;
 alter table public.vendor_transactions enable row level security;
 
--- نقش موثر: اگر کاربر منشی باشد، نقش صاحب‌حسابش برگردانده می‌شود
 create or replace function public.current_role()
 returns text as $$
   select coalesce(owner.role, p.role)
@@ -174,7 +173,6 @@ returns text as $$
   where p.id = auth.uid();
 $$ language sql stable security definer;
 
--- شناسه موثر: اگر کاربر منشی باشد، شناسه صاحب‌حسابش برگردانده می‌شود
 create or replace function public.effective_owner_id()
 returns uuid as $$
   select coalesce(
@@ -183,14 +181,19 @@ returns uuid as $$
   );
 $$ language sql stable security definer;
 
--- profiles
+-- تابع کمکی جدا برای رفع مشکل recursion
+create or replace function public.my_owner_id()
+returns uuid as $$
+  select owner_id from public.profiles where id = auth.uid();
+$$ language sql stable security definer;
+
 create policy "profiles_select_own_or_admin"
   on public.profiles for select
   using (id = auth.uid() or public.current_role() = 'admin');
 
 create policy "profiles_select_owner_by_secretary"
   on public.profiles for select
-  using (id = (select owner_id from public.profiles p2 where p2.id = auth.uid()));
+  using (id = public.my_owner_id());
 
 create policy "profiles_select_secretaries_by_owner"
   on public.profiles for select
@@ -202,7 +205,6 @@ create policy "profiles_update_own"
 create policy "profiles_update_admin"
   on public.profiles for update using (public.current_role() = 'admin');
 
--- marketers
 create policy "marketers_select"
   on public.marketers for select
   using (id = public.effective_owner_id() or public.current_role() = 'admin');
@@ -210,7 +212,6 @@ create policy "marketers_select"
 create policy "marketers_insert_admin"
   on public.marketers for insert with check (public.current_role() = 'admin');
 
--- vendors
 create policy "vendors_select_owner_marketer_admin"
   on public.vendors for select
   using (
@@ -229,7 +230,6 @@ create policy "vendors_insert_admin"
 create policy "vendors_update_admin"
   on public.vendors for update using (public.current_role() = 'admin');
 
--- payments
 create policy "payments_select"
   on public.payments for select
   using (
@@ -241,7 +241,6 @@ create policy "payments_select"
 create policy "payments_insert_admin"
   on public.payments for insert with check (public.current_role() = 'admin');
 
--- follows (مشتری منشی ندارد)
 create policy "follows_select_own_customer"
   on public.customer_vendor_follows for select
   using (customer_id = auth.uid() or vendor_id = auth.uid() or public.current_role() = 'admin');
@@ -254,7 +253,6 @@ create policy "follows_delete_own_customer"
   on public.customer_vendor_follows for delete
   using (customer_id = auth.uid());
 
--- discounts / social links / posts
 create policy "discounts_select"
   on public.discounts for select
   using (
@@ -285,7 +283,6 @@ create policy "posts_manage_owner"
   on public.vendor_posts for all
   using (vendor_id = public.effective_owner_id()) with check (vendor_id = public.effective_owner_id());
 
--- vendor_contacts و vendor_transactions: فقط خود کاسب/منشی‌اش و ادمین
 create policy "contacts_owner_admin"
   on public.vendor_contacts for all
   using (vendor_id = public.effective_owner_id() or public.current_role() = 'admin')
