@@ -1,5 +1,6 @@
 package com.bazaryar.app.repo
 
+import com.bazaryar.app.model.DeleteAccountRequest
 import com.bazaryar.app.model.LoginRequest
 import com.bazaryar.app.model.RecoverRequest
 import com.bazaryar.app.model.Role
@@ -60,6 +61,9 @@ class AuthRepository {
         role: String, firstName: String, lastName: String,
         email: String, password: String, noCriminalRecord: Boolean
     ): SimpleResult {
+        if (role == Role.ADMIN) {
+            return SimpleResult.Error("ثبت‌نام مدیر از این طریق مجاز نیست")
+        }
         return try {
             val meta = mapOf(
                 "role" to role,
@@ -85,9 +89,22 @@ class AuthRepository {
 
     suspend fun deleteAccount(): SimpleResult {
         return try {
-            val response = ApiClient.functionsApi.deleteAccount()
+            val response = ApiClient.functionsApi.deleteAccount(DeleteAccountRequest())
             if (response.success == true) {
                 SessionManager.clear()
+                SimpleResult.Success
+            } else {
+                SimpleResult.Error(response.error ?: "خطا در حذف حساب")
+            }
+        } catch (e: Exception) {
+            SimpleResult.Error(e.message ?: "خطا در حذف حساب")
+        }
+    }
+
+    suspend fun deleteOtherAccount(targetUserId: String): SimpleResult {
+        return try {
+            val response = ApiClient.functionsApi.deleteAccount(DeleteAccountRequest(targetUserId = targetUserId))
+            if (response.success == true) {
                 SimpleResult.Success
             } else {
                 SimpleResult.Error(response.error ?: "خطا در حذف حساب")
