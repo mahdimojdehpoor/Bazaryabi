@@ -149,8 +149,27 @@ class AppViewModel : ViewModel() {
         myTransactions = vendorRepo.getMyTransactions()
     }
 
-    fun approveProfile(profile: Profile) = viewModelScope.launch { adminRepo.approve(profile); refreshCurrentDashboard() }
-    fun rejectProfile(profile: Profile) = viewModelScope.launch { adminRepo.reject(profile); refreshCurrentDashboard() }
+    fun approveProfile(profile: Profile) {
+        viewModelScope.launch {
+            try {
+                adminRepo.approve(profile)
+                refreshCurrentDashboard()
+            } catch (e: Exception) {
+                errorMessage = "خطا در تایید: ${e.message}"
+            }
+        }
+    }
+
+    fun rejectProfile(profile: Profile) {
+        viewModelScope.launch {
+            try {
+                adminRepo.reject(profile)
+                refreshCurrentDashboard()
+            } catch (e: Exception) {
+                errorMessage = "خطا در رد کردن: ${e.message}"
+            }
+        }
+    }
     fun toggleSuspend(profileId: String, suspend: Boolean) =
         viewModelScope.launch { adminRepo.setAccountStatus(profileId, suspend); refreshCurrentDashboard() }
 
